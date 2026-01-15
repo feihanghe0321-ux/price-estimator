@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>任务预期报价计算器</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f8fa;
+      padding: 24px;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+    th, td {
+      border: 1px solid #e5e6eb;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #f2f3f5;
+    }
+    input, select {
+      width: 90%;
+      padding: 6px;
+    }
+    button {
+      padding: 8px 12px;
+      border: none;
+      background: #1677ff;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #f5222d;
+    }
+    .result {
+      margin-top: 16px;
+      background: #f6ffed;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #b7eb8f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>任务预期报价计算器（秒级）</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>作业时长</th>
+          <th>单位</th>
+          <th>实际报价（元）</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <button onclick="addRow()">新增历史记录</button>
+
+    <h3 style="margin-top:20px;">当前任务</h3>
+    作业时长（秒）：
+    <input type="number" id="currentSeconds" placeholder="例如 7200" />
+
+    <br/><br/>
+    <button onclick="calculate()">计算预期报价</button>
+
+    <div class="result" id="result" style="display:none;"></div>
+  </div>
+
+<script>
+const STORAGE_KEY = 'price_history';
+const tbody = document.getElementById('tbody');
+
+function addRow(data = {}) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="number" value="${data.duration || ''}"></td>
+    <td>
+      <select>
+        <option value="hour" ${data.unit === 'hour' ? 'selected' : ''}>小时</option>
+        <option value="second" ${data.unit === 'second' ? 'selected' : ''}>秒</option>
+      </select>
+    </td>
+    <td><input type="number" value="${data.price || ''}"></td>
+    <td><button class="secondary" onclick="removeRow(this)">删除</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function removeRow(btn) {
+  btn.closest('tr').remove();
+  saveData();
+}
+
+function saveData() {
+  const rows = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const duration = tr.children[0].querySelector('input').value;
+    const unit = tr.children[1].querySelector('select').value;
+    const price = tr.children[2].querySelector('input').value;
+    if (duration && price) {
+      rows.push({ duration, unit, price });
+    }
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+}
+
+function loadData() {
+  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  data.forEach(d => addRow(d));
+  if (data.length === 0) addRow();
+}
+
+function calculate() {
+  saveData();
+  let totalSeconds = 0;
+  let totalPrice = 0;
+
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const duration = parseFloat(tr.children[0].querySelector('input').value);
+    const unit = tr.children[1].querySelector('select').value;
+    const price = parseFloat(tr.children[2].querySelector('input').value);
+    if (!isNaN(duration) && !isNaN(price)) {
+      const seconds = unit === 'hour' ? duration * 3600 : duration;
+      totalSeconds += seconds;
+      totalPrice += price;
+    }
+  });
+
+  const currentSeconds = parseFloat(document.getElementById('currentSeconds').value);
+  if (totalSeconds === 0 || isNaN(currentSeconds)) {
+    alert('请补全数据');
+    return;
+  }
+
+  const unitPrice = totalPrice / totalSeconds;
+  const expectedPrice = unitPrice * currentSeconds;
+
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('result').innerHTML = `
+    平均单价：${unitPrice.toFixed(4)} 元 / 秒<br/>
+    当前任务预期报价：<strong>${expectedPrice.toFixed(2)} 元</strong>
+  `;
+}
+
+document.addEventListener('input', saveData);
+loadData();
+</script>
+</body>
+</html>
