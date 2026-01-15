@@ -1,165 +1,159 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <title>任务预期报价计算器</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f7f8fa;
-      padding: 24px;
-    }
-    .container {
-      max-width: 900px;
-      margin: auto;
-      background: #fff;
-      padding: 24px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 16px;
-    }
-    th, td {
-      border: 1px solid #e5e6eb;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background: #f2f3f5;
-    }
-    input, select {
-      width: 90%;
-      padding: 6px;
-    }
-    button {
-      padding: 8px 12px;
-      border: none;
-      background: #1677ff;
-      color: #fff;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button.secondary {
-      background: #f5222d;
-    }
-    .result {
-      margin-top: 16px;
-      background: #f6ffed;
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid #b7eb8f;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>任务预期报价计算器（场景区分）</title>
+<style>
+  body { font-family: Arial; background:#f7f8fa; padding:24px; }
+  .container { max-width:1100px; margin:auto; background:#fff; padding:24px; border-radius:8px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+  th, td { border:1px solid #e5e6eb; padding:8px; text-align:center; }
+  th { background:#f2f3f5; }
+  th.scene-header { background:#fff1f0; color:#cf1322; font-weight:bold; }
+  input, select { width:90%; padding:6px; }
+  button { padding:6px 12px; border:none; border-radius:4px; cursor:pointer; }
+  button.add { background:#1677ff; color:#fff; margin-bottom:12px; }
+  button.delete { background:#ff4d4f; color:#fff; }
+  .result { margin-top:16px; background:#f6ffed; padding:12px; border-radius:6px; }
+  .scene-title { margin-top:12px; font-weight:bold; color:#1890ff; }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>任务预期报价计算器（秒级）</h2>
+<div class="container">
+  <h2>任务预期报价计算器（按场景区分）</h2>
 
-    <table>
-      <thead>
-        <tr>
-          <th>作业时长</th>
-          <th>单位</th>
-          <th>实际报价（元）</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+  <table>
+    <thead>
+      <tr>
+        <th class="scene-header">场景<span style="color:#cf1322;">*</span></th>
+        <th>作业条数</th>
+        <th>音频时长</th>
+        <th>时长单位</th>
+        <th>报价</th>
+        <th>报价单位</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
 
-    <button onclick="addRow()">新增历史记录</button>
+  <button class="add" onclick="addRow()">新增历史记录</button>
 
-    <h3 style="margin-top:20px;">当前任务</h3>
-    作业时长（秒）：
-    <input type="number" id="currentSeconds" placeholder="例如 7200" />
+  <h3 style="margin-top:20px;">当前任务</h3>
+  当前任务音频时长（秒）：<input type="number" id="currentSeconds" />
+  <br/><br/>
+  当前任务场景：
+  <select id="currentScene">
+    <option value="标注">标注</option>
+    <option value="质检">质检</option>
+  </select>
+  <br/><br/>
+  <button class="add" onclick="calculate()">计算预期报价</button>
 
-    <br/><br/>
-    <button onclick="calculate()">计算预期报价</button>
-
-    <div class="result" id="result" style="display:none;"></div>
-  </div>
+  <div class="result" id="result" style="display:none;"></div>
+</div>
 
 <script>
-const STORAGE_KEY = 'price_history';
+const KEY = 'price_model_v4';
 const tbody = document.getElementById('tbody');
 
-function addRow(data = {}) {
+function addRow(d={}) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input type="number" value="${data.duration || ''}"></td>
     <td>
       <select>
-        <option value="hour" ${data.unit === 'hour' ? 'selected' : ''}>小时</option>
-        <option value="second" ${data.unit === 'second' ? 'selected' : ''}>秒</option>
+        <option value="标注" ${d.scene==='标注'?'selected':''}>标注</option>
+        <option value="质检" ${d.scene==='质检'?'selected':''}>质检</option>
       </select>
     </td>
-    <td><input type="number" value="${data.price || ''}"></td>
-    <td><button class="secondary" onclick="removeRow(this)">删除</button></td>
+    <td><input type="number" value="${d.count||''}"></td>
+    <td><input type="number" value="${d.duration||''}"></td>
+    <td>
+      <select>
+        <option value="hour" ${d.timeUnit==='hour'?'selected':''}>小时</option>
+        <option value="second" ${d.timeUnit==='second'?'selected':''}>秒</option>
+      </select>
+    </td>
+    <td><input type="number" value="${d.price||''}"></td>
+    <td>
+      <select>
+        <option value="per_item" ${d.priceUnit==='per_item'?'selected':''}>元/条</option>
+        <option value="per_second" ${d.priceUnit==='per_second'?'selected':''}>元/秒</option>
+      </select>
+    </td>
+    <td><button class="delete" onclick="removeRow(this)">删除</button></td>
   `;
   tbody.appendChild(tr);
 }
 
 function removeRow(btn) {
   btn.closest('tr').remove();
-  saveData();
+  save();
 }
 
-function saveData() {
-  const rows = [];
-  tbody.querySelectorAll('tr').forEach(tr => {
-    const duration = tr.children[0].querySelector('input').value;
-    const unit = tr.children[1].querySelector('select').value;
-    const price = tr.children[2].querySelector('input').value;
-    if (duration && price) {
-      rows.push({ duration, unit, price });
-    }
+function save() {
+  const data = [];
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    data.push({
+      scene: tr.children[0].querySelector('select').value,
+      count: tr.children[1].querySelector('input').value,
+      duration: tr.children[2].querySelector('input').value,
+      timeUnit: tr.children[3].querySelector('select').value,
+      price: tr.children[4].querySelector('input').value,
+      priceUnit: tr.children[5].querySelector('select').value
+    });
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+  localStorage.setItem(KEY, JSON.stringify(data));
 }
 
-function loadData() {
-  const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  data.forEach(d => addRow(d));
-  if (data.length === 0) addRow();
+function load() {
+  const data = JSON.parse(localStorage.getItem(KEY) || '[]');
+  data.length ? data.forEach(d=>addRow(d)) : addRow();
 }
 
 function calculate() {
-  saveData();
-  let totalSeconds = 0;
-  let totalPrice = 0;
+  save();
+  const sceneMap = {};
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const scene = tr.children[0].querySelector('select').value || '标注';
+    const count = parseFloat(tr.children[1].querySelector('input').value) || 0;
+    let duration = parseFloat(tr.children[2].querySelector('input').value) || 0;
+    const timeUnit = tr.children[3].querySelector('select').value;
+    const price = parseFloat(tr.children[4].querySelector('input').value) || 0;
+    const priceUnit = tr.children[5].querySelector('select').value;
 
-  tbody.querySelectorAll('tr').forEach(tr => {
-    const duration = parseFloat(tr.children[0].querySelector('input').value);
-    const unit = tr.children[1].querySelector('select').value;
-    const price = parseFloat(tr.children[2].querySelector('input').value);
-    if (!isNaN(duration) && !isNaN(price)) {
-      const seconds = unit === 'hour' ? duration * 3600 : duration;
-      totalSeconds += seconds;
-      totalPrice += price;
-    }
+    const seconds = timeUnit==='hour'?duration*3600:duration;
+    const rowTotalPrice = priceUnit==='per_item'?count*price:price*seconds;
+
+    if (!sceneMap[scene]) sceneMap[scene]={totalSeconds:0,totalPrice:0};
+    sceneMap[scene].totalSeconds += seconds;
+    sceneMap[scene].totalPrice += rowTotalPrice;
   });
 
   const currentSeconds = parseFloat(document.getElementById('currentSeconds').value);
-  if (totalSeconds === 0 || isNaN(currentSeconds)) {
-    alert('请补全数据');
-    return;
+  const currentScene = document.getElementById('currentScene').value;
+  if (!currentSeconds || !sceneMap[currentScene]) return alert('请补全数据');
+
+  const unitPrice = sceneMap[currentScene].totalPrice / sceneMap[currentScene].totalSeconds;
+  const expected = unitPrice * currentSeconds;
+
+  let html = '';
+  for (const s in sceneMap){
+    const u = sceneMap[s].totalPrice / sceneMap[s].totalSeconds;
+    html += `<div class="scene-title">${s}场景：</div>`;
+    html += `综合历史单价：${u.toFixed(6)} 元 / 秒<br/>`;
+    if (s===currentScene){
+      html += `当前任务预期报价：<strong>${expected.toFixed(2)} 元</strong><br/>`;
+    }
   }
 
-  const unitPrice = totalPrice / totalSeconds;
-  const expectedPrice = unitPrice * currentSeconds;
-
-  document.getElementById('result').style.display = 'block';
-  document.getElementById('result').innerHTML = `
-    平均单价：${unitPrice.toFixed(4)} 元 / 秒<br/>
-    当前任务预期报价：<strong>${expectedPrice.toFixed(2)} 元</strong>
-  `;
+  const resultDiv = document.getElementById('result');
+  resultDiv.style.display='block';
+  resultDiv.innerHTML = html;
 }
 
-document.addEventListener('input', saveData);
-loadData();
+document.addEventListener('input', save);
+load();
 </script>
 </body>
 </html>
